@@ -233,10 +233,8 @@ class TerminatorUnitBase(BaseModel):
 
     @model_validator(mode="after")
     def check_threat_level_matches_time(self):
-        if self.threat_level == ThreatLevel.LOW and self.assembly_time_minutes > 30:
-            raise ValueError("an LOW unit cannot take more than 30 minutes")
-        if self.threat_level == ThreatLevel.EXTREME and self.assembly_time_minutes < 20:
-            raise ValueError("a EXTREME unit cannot take less than 20 minutes")
+        if self.threat_level == ThreatLevel.EXTREME and self.assembly_time_minutes > 30:
+            raise ValueError("a EXTREME unit cannot take more than 30 minutes")
         return self
 
 
@@ -266,18 +264,10 @@ def get_unit_or_404(unit_id: int) -> TerminatorUnit:
             return r
     raise HTTPException(status_code=404, detail=f"unit {unit_id} not found")
 
-def check_unit_foreign_keys(payload) -> None:
-    get_commander_or_404(payload.commander_id)
-    get_unit_class_or_404(payload.unit_class_id)
-    for ri in payload.components:
-        get_component_or_404(ri.component_id)
-
-
 
 @app.post("/units", response_model=TerminatorUnit, status_code=201)
 def create_unit(payload: TerminatorUnitCreate):
     global unit_id_counter
-    check_unit_foreign_keys(payload)
     unit = TerminatorUnit(id=unit_id_counter, **payload.model_dump())
     unit_id_counter += 1
     units.append(unit)
@@ -298,13 +288,6 @@ def get_unit(unit_id: int):
 def update_unit(unit_id: int, payload: TerminatorUnitUpdate):
     unit = get_unit_or_404(unit_id)
     update_data = payload.model_dump(exclude_unset=True)
-    if "commander_id" in update_data:
-        get_commander_or_404(update_data["commander_id"])
-    if "unit_class_id" in update_data:
-        get_unit_class_or_404(update_data["unit_class_id"])
-    if "components" in update_data and update_data["components"] is not None:
-        for ri in update_data["components"]:
-            get_component_or_404(ri["component_id"])
     updated = unit.model_copy(update=update_data)
     units[units.index(unit)] = updated
     return updated
