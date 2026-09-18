@@ -134,3 +134,168 @@ def delete_commander(commander_id: int):
     commanders.remove(commander)
     return None
 
+
+
+class PartUnit(str, Enum):
+    GRAM = "GRAM"
+    KILOGRAM = "KILOGRAM"
+    LITER = "LITER"
+    MILLILITER = "MILLILITER"
+    PIECE = "PIECE"
+    TABLESPOON = "TABLESPOON"
+    TEASPOON = "TEASPOON"
+
+
+class ComponentBase(BaseModel):
+    name: str = Field(min_length=2, max_length=60)
+    unit: PartUnit
+
+
+class ComponentCreate(ComponentBase):
+    pass
+
+
+class ComponentUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=2, max_length=60)
+    unit: Optional[PartUnit] = None
+
+
+class Component(ComponentBase):
+    id: int
+
+
+components: List[Component] = []
+component_id_counter = 1
+
+
+def get_component_or_404(component_id: int) -> Component:
+    for i in components:
+        if i.id == component_id:
+            return i
+    raise HTTPException(status_code=404, detail=f"component {component_id} not found")
+
+
+@app.post("/components", response_model=Component, status_code=201)
+def create_component(payload: ComponentCreate):
+    global component_id_counter
+    component = Component(id=component_id_counter, **payload.model_dump())
+    component_id_counter += 1
+    components.append(component)
+    return component
+
+
+@app.get("/components", response_model=List[Component])
+def list_components():
+    return components
+
+
+@app.get("/components/{component_id}", response_model=Component)
+def get_component(component_id: int):
+    return get_component_or_404(component_id)
+
+
+@app.patch("/components/{component_id}", response_model=Component)
+def update_component(component_id: int, payload: ComponentUpdate):
+    component = get_component_or_404(component_id)
+    update_data = payload.model_dump(exclude_unset=True)
+    updated = component.model_copy(update=update_data)
+    components[components.index(component)] = updated
+    return updated
+
+
+@app.delete("/components/{component_id}", status_code=204)
+def delete_component(component_id: int):
+    component = get_component_or_404(component_id)
+    components.remove(component)
+    return None
+
+
+
+class ThreatLevel(str, Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    EXTREME = "EXTREME"
+
+
+class TerminatorUnitComponent(BaseModel):
+    component_id: int
+    quantity: float = Field(gt=0, le=10000)
+
+
+class TerminatorUnitBase(BaseModel):
+    title: str = Field(min_length=3, max_length=100)
+    commander_id: int
+    unit_class_id: int
+    assembly_time_minutes: int = Field(ge=1, le=600)
+    threat_level: ThreatLevel
+    description: Optional[str] = Field(default=None, max_length=500)
+    components: List[TerminatorUnitComponent] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def check_threat_level_matches_time(self):
+        if self.threat_level == ThreatLevel.EXTREME and self.assembly_time_minutes > 30:
+            raise ValueError("a EXTREME unit cannot take more than 30 minutes")
+        return self
+
+
+class TerminatorUnitCreate(TerminatorUnitBase):
+    pass
+
+
+class TerminatorUnitUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=3, max_length=100)
+    commander_id: Optional[int] = None
+    unit_class_id: Optional[int] = None
+    assembly_time_minutes: Optional[int] = Field(default=None, ge=1, le=600)
+    description: Optional[str] = Field(default=None, max_length=500)
+
+
+class TerminatorUnit(TerminatorUnitBase):
+    id: int
+
+
+units: List[TerminatorUnit] = []
+unit_id_counter = 1
+
+
+def get_unit_or_404(unit_id: int) -> TerminatorUnit:
+    for r in units:
+        if r.id == unit_id:
+            return r
+    raise HTTPException(status_code=404, detail=f"unit {unit_id} not found")
+
+
+@app.post("/units", response_model=TerminatorUnit, status_code=201)
+def create_unit(payload: TerminatorUnitCreate):
+    global unit_id_counter
+    unit = TerminatorUnit(id=unit_id_counter, **payload.model_dump())
+    unit_id_counter += 1
+    units.append(unit)
+    return unit
+
+
+@app.get("/units", response_model=List[TerminatorUnit])
+def list_units():
+    return units
+
+
+@app.get("/units/{unit_id}", response_model=TerminatorUnit)
+def get_unit(unit_id: int):
+    return get_unit_or_404(unit_id)
+
+
+@app.patch("/units/{unit_id}", response_model=TerminatorUnit)
+def update_unit(unit_id: int, payload: TerminatorUnitUpdate):
+    unit = get_unit_or_404(unit_id)
+    update_data = payload.model_dump(exclude_unset=True)
+    updated = unit.model_copy(update=update_data)
+    units[units.index(unit)] = updated
+    return updated
+
+
+@app.delete("/units/{unit_id}", status_code=204)
+def delete_unit(unit_id: int):
+    unit = get_unit_or_404(unit_id)
+    units.remove(unit)
+    return None
+
