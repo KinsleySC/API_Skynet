@@ -296,6 +296,81 @@ def update_unit(unit_id: int, payload: TerminatorUnitUpdate):
 @app.delete("/units/{unit_id}", status_code=204)
 def delete_unit(unit_id: int):
     unit = get_unit_or_404(unit_id)
+    if any(rv.unit_id == unit_id for rv in mission_reports):
+        raise HTTPException(status_code=400, detail="unit has mission_reports and cannot be deleted")
     units.remove(unit)
+    return None
+
+
+
+class MissionReportBase(BaseModel):
+    unit_id: int
+    reporter_name: str = Field(min_length=2, max_length=80)
+    success_rating: int
+    comment: Optional[str] = Field(default=None, max_length=400)
+    classified_note: Optional[str] = Field(default=None, max_length=200)
+
+
+class MissionReportCreate(MissionReportBase):
+    pass
+
+
+class MissionReportUpdate(BaseModel):
+    reporter_name: Optional[str] = Field(default=None, min_length=2, max_length=80)
+    success_rating: Optional[int] = None
+    comment: Optional[str] = Field(default=None, max_length=400)
+    classified_note: Optional[str] = Field(default=None, max_length=200)
+
+
+class MissionReport(MissionReportBase):
+    id: int
+
+
+mission_reports: List[MissionReport] = []
+mission_report_id_counter = 1
+
+
+def get_mission_report_or_404(mission_report_id: int) -> MissionReport:
+    for rv in mission_reports:
+        if rv.id == mission_report_id:
+            return rv
+    raise HTTPException(status_code=404, detail=f"mission_report {mission_report_id} not found")
+
+
+@app.post("/mission-reports", response_model=MissionReport, status_code=201)
+def create_mission_report(payload: MissionReportCreate):
+    global mission_report_id_counter
+    get_unit_or_404(payload.unit_id)
+    mission_report = MissionReport(id=mission_report_id_counter, **payload.model_dump())
+    mission_report_id_counter += 1
+    mission_reports.append(mission_report)
+    return mission_report
+
+
+@app.get("/mission-reports", response_model=List[MissionReport])
+def list_mission_reports(unit_id: Optional[int] = None):
+    if unit_id is not None:
+        return [rv for rv in mission_reports if rv.unit_id == unit_id]
+    return mission_reports
+
+
+@app.get("/mission-reports/{mission_report_id}", response_model=MissionReport)
+def get_mission_report(mission_report_id: int):
+    return get_mission_report_or_404(mission_report_id)
+
+
+@app.patch("/mission-reports/{mission_report_id}", response_model=MissionReport)
+def update_mission_report(mission_report_id: int, payload: MissionReportUpdate):
+    mission_report = get_mission_report_or_404(mission_report_id)
+    update_data = payload.model_dump(exclude_unset=True)
+    updated = mission_report.model_copy(update=update_data)
+    mission_reports[mission_reports.index(mission_report)] = updated
+    return updated
+
+
+@app.delete("/mission-reports/{mission_report_id}", status_code=204)
+def delete_mission_report(mission_report_id: int):
+    mission_report = get_mission_report_or_404(mission_report_id)
+    mission_reports.remove(mission_report)
     return None
 
