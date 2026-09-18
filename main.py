@@ -233,8 +233,10 @@ class TerminatorUnitBase(BaseModel):
 
     @model_validator(mode="after")
     def check_threat_level_matches_time(self):
-        if self.threat_level == ThreatLevel.EXTREME and self.assembly_time_minutes > 30:
-            raise ValueError("a EXTREME unit cannot take more than 30 minutes")
+        if self.threat_level == ThreatLevel.LOW and self.assembly_time_minutes > 30:
+            raise ValueError("an LOW unit cannot take more than 30 minutes")
+        if self.threat_level == ThreatLevel.EXTREME and self.assembly_time_minutes < 20:
+            raise ValueError("a EXTREME unit cannot take less than 20 minutes")
         return self
 
 
