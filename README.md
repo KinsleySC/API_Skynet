@@ -6,7 +6,7 @@ assemblage et des rapports de mission de la Résistance.
 ## Structure du projet
 
 ```
-Apiskynet/
+API_Skynet/
 ├── main.py              # point d'entrée, assemble les routeurs
 ├── models.py             # modèles Pydantic + enums (PartUnit, ThreatLevel)
 ├── storage.py             # stockage en mémoire + fonctions get_or_404
@@ -39,6 +39,10 @@ Apiskynet/
 ## Lancer le projet
 
 http://127.0.0.1:8000/docs
+
+pip install -r requirements.txt
+
+uvicorn main:app --reload
 
 ## Routes principales
 
