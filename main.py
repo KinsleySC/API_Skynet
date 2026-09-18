@@ -211,12 +211,31 @@ def delete_component(component_id: int):
 
 
 
+class ThreatLevel(str, Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    EXTREME = "EXTREME"
+
+
+class TerminatorUnitComponent(BaseModel):
+    component_id: int
+    quantity: float = Field(gt=0, le=10000)
+
+
 class TerminatorUnitBase(BaseModel):
     title: str = Field(min_length=3, max_length=100)
     commander_id: int
     unit_class_id: int
     assembly_time_minutes: int = Field(ge=1, le=600)
+    threat_level: ThreatLevel
     description: Optional[str] = Field(default=None, max_length=500)
+    components: List[TerminatorUnitComponent] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def check_threat_level_matches_time(self):
+        if self.threat_level == ThreatLevel.EXTREME and self.assembly_time_minutes > 30:
+            raise ValueError("a EXTREME unit cannot take more than 30 minutes")
+        return self
 
 
 class TerminatorUnitCreate(TerminatorUnitBase):
